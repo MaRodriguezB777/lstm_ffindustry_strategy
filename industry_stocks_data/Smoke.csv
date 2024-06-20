@@ -1,0 +1,11 @@
+ticker,name,cik,cusip,exchange,isDelisted,category,sector,industry,sic,sicSector,sicIndustry,famaSector,famaIndustry,currency,location,id
+HPCO,HEMPACCO CO INC,1892480,42371L106 42371L205,NASDAQ,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,California; U.S.A,82cb68eebbe581d1d4f9508bc61e4890
+ISPR,ISPIRE TECHNOLOGY INC,1948455,46501C100,NASDAQ,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,California; U.S.A,61ddcfd8a63f4849395bdbb4a79f3d42
+KAVL,KAIVAL BRANDS INNOVATIONS GROUP INC,1762239,483104204 483104402 483104105,NASDAQ,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,Florida; U.S.A,8d639a574d41bd937b2ade237658873c
+XXII,22ND CENTURY GROUP INC,1347858,90137F103 90137F202 90137F301,NASDAQ,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,New York; U.S.A,de912f1ca229ae2c2d2d126b8b578e5c
+BTI,BRITISH AMERICAN TOBACCO PLC,1303523,110448107 055270508,NYSE,False,ADR Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,United Kingdom,2ec4c5db20c8e8b4d1b8b62ed9cbd0e5
+MO,ALTRIA GROUP INC,764180,02209S103 718154107,NYSE,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,Virginia; U.S.A,55262f79d316fcbd6ff8ba661e478cff
+PM,PHILIP MORRIS INTERNATIONAL INC,1413329,718172109,NYSE,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,New York; U.S.A,0e002010ac1ec750375094c947c94aff
+RLX,RLX TECHNOLOGY INC,1828365,74969N103,NYSE,False,ADR Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,China,9bc8348ff3025036682ce6736c061037
+TPB,TURNING POINT BRANDS INC,1290677,90041L105,NYSE,False,Domestic Common Stock,Consumer Defensive,Tobacco,2100,Manufacturing,Tobacco Products,,Tobacco Products,USD,Kentucky; U.S.A,0e1f478c42dbad5f3e492580f69317a1
+VGR,VECTOR GROUP LTD,59440,92240M108 112525100,NYSE,False,Domestic Common Stock,Consumer Defensive,Tobacco,2111,Manufacturing,Cigarettes,,Tobacco Products,USD,Florida; U.S.A,0364b1ad36384d33221186af918c0362

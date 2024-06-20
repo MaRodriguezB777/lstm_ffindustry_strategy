@@ -1,0 +1,8 @@
+ticker,name,cik,cusip,exchange,isDelisted,category,sector,industry,sic,sicSector,sicIndustry,famaSector,famaIndustry,currency,location,id
+CRWS,CROWN CRAFTS INC,25895,228309100,NASDAQ,False,Domestic Common Stock,Consumer Cyclical,Furnishings Fixtures & Appliances,2211,Manufacturing,Broadwoven Fabric Mills Cotton,,Textiles,USD,Louisiana; U.S.A,24adff08de69f1e9373d41267c2e7402
+DXYN,DIXIE GROUP INC,29332,255519100 255579104,NASDAQ,False,Domestic Common Stock,Consumer Cyclical,Textile Manufacturing,2273,Manufacturing,Carpets & Rugs,,Textiles,USD,Georgia; U.S.A,3342c88d6673f9da63be081bd470da09
+TILE,INTERFACE INC,715787,458665304 458665106,NASDAQ,False,Domestic Common Stock,Basic Materials,Building Products & Equipment,2273,Manufacturing,Carpets & Rugs,,Textiles,USD,Georgia; U.S.A,c41d94763f3a738bc5dd39e58f46c155
+AIN,ALBANY INTERNATIONAL CORP,819793,012348108,NYSE,False,Domestic Common Stock,Consumer Cyclical,Textile Manufacturing,2221,Manufacturing,Broadwoven Fabric Mills Man Made Fiber & Silk,,Textiles,USD,New Hampshire; U.S.A,9c7f9b30205a1a50715a6b821c218631
+CULP,CULP INC,723603,230215105,NYSE,False,Domestic Common Stock,Consumer Cyclical,Textile Manufacturing,2211,Manufacturing,Broadwoven Fabric Mills Cotton,,Textiles,USD,North Carolina; U.S.A,e5f90dd39dc16d3c1acc2797dbb5e19a
+MHK,MOHAWK INDUSTRIES INC,851968,608190104,NYSE,False,Domestic Common Stock,Consumer Cyclical,Furnishings Fixtures & Appliances,2273,Manufacturing,Carpets & Rugs,,Textiles,USD,Georgia; U.S.A,27b0bd536ad56479f0baf17e238892db
+UFI,UNIFI INC,100726,904677200 904677101,NYSE,False,Domestic Common Stock,Consumer Cyclical,Textile Manufacturing,2200,Manufacturing,Textile Mill Products,,Textiles,USD,North Carolina; U.S.A,88c0a3800e05eb1379626ef69ee78c60
