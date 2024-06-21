@@ -37,13 +37,13 @@ class LSTM_Industries(QCAlgorithm):
         #     self.date_rules.every_day(), self.time_rules.at(9, 30), self.rebalance
         # )
 
-        self.schedule.on(self.date_rules.every_day(), 
-                         self.time_rules.at(15, 55), 
-                         self.liquidate)
+        self.schedule.on(
+            self.date_rules.every_day(), self.time_rules.at(15, 55), self.liquidate
+        )
 
     def ticker_exists(self, ticker):
         try:
-            history = self.History([ticker], 1, Resolution.Daily)
+            history = self.history([ticker], 1, Resolution.DAILY)
             if not history.empty:
                 return True
         except Exception as e:
@@ -69,66 +69,42 @@ class LSTM_Industries(QCAlgorithm):
 
         return ind_stocks
 
-    def get_weights(self, chosen_industries):
-        total_market_caps = {}
+    def get_weights(self, data: Slice, chosen_industries):
+        total_market_cap = 0
         stock_market_caps = {}
         weights = {}
 
         for industry, stocks in self.industry_stocks.items():
             if industry not in chosen_industries:
                 continue
-            stock_market_caps[industry] = {}
+            # stock_market_caps[industry] = {}
             for ticker, equity in stocks.items():
-                if self.ticker_exists(ticker):
+                if data.containsKey(ticker):
                     market_cap = equity.fundamentals.market_cap
-                    stock_market_caps[industry][ticker] = market_cap
-                    total_market_caps[industry] += market_cap
+                    stock_market_caps[ticker] = market_cap
+                    total_market_cap += market_cap
 
-        for industry, market_caps in stock_market_caps.items():
-            for ticker, market_cap in market_caps.items():
-                weight = market_cap / total_market_caps[industry]
-                weights[ticker] = weight
+        for ticker, market_cap in stock_market_caps.items():
+            weight = market_cap / total_market_cap
+            weights[ticker] = weight
 
         return weights
 
     def get_industries(self):
         # TODO: @firdavsn? implement this function
-        # gets the top decile industry and bottom decile industry in terms of
+        # gets the top decile industries and bottom decile industry in terms of
         # predicted returns by the LSTM model
+        # returns a dictionary with two keys: "long" and "short" and a list of
+        # industries for each key
         pass
 
-    def OnData(self, data):
+    def OnData(self, data: Slice):
         chosen_industries = self.get_industries()
-        weights = self.get_weights(chosen_industries)
+        long_weights = self.get_weights(data, chosen_industries["long"])
+        short_weights = self.get_weights(data, chosen_industries["short"])
 
-        for ticker, weight in weights.items():
-            if data.containsKey(ticker):
-                self.SetHoldings(ticker, weight)
-        # market_cap = self.nvda.fundamentals.market_cap
-        # self.Log("Market Cap: " + str(market_cap))
-        # if market_cap is not None:
-        # if self.portfolio.invested:
-        #     self.liquidate()
-        # if not self.nvda.symbol in data:
-        #     return
+        for ticker, weight in long_weights.items():
+            self.SetHoldings(ticker, weight)
 
-        # # price = data.Bars[self.spy].Close
-        # # price = data[self.nvda].Close
-        # # price = self.Securities[self.spy].Close
-
-        # if not self.portfolio.invested and not self.stop:
-        #     # if self.nextEntryTime <= self.Time:
-        #     self.SetHoldings(self.nvda.symbol, 0.5)
-        #     self.stop = True
-        # self.MarketOrder(self.spy, int(self.Portfolio.Cash / price) )
-        # self.Log("BUY NVDA @" + str(price))
-        # self.entryPrice = price
-
-        # elif self.entryPrice * 1.1 < price or self.entryPrice * 0.90 > price:
-        #     self.Liquidate()
-        #     self.Log("SELL SPY @" + str(price))
-        #     self.nextEntryTime = self.Time + self.period
-
-
-def OnEndOfDay(self):
-
+        for ticker, weight in short_weights.items():
+            self.SetHoldings(ticker, -weight)
