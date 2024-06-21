@@ -148,3 +148,5 @@ lean/modules-*.json
 
 # error file
 qc_error**
+
+qc.code-workspace
