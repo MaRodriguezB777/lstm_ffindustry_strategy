@@ -1,0 +1,58 @@
+{
+    "folders": [
+        {
+            "name": "Project",
+            "path": "/Users/rafwild8/Documents/lean_ws/LSTM_Industries"
+        }
+    ],
+    "settings": {
+        "python.autoComplete.extraPaths": [
+            "/Users/rafwild8/Documents/lean_ws/Library"
+        ],
+        "python.analysis.extraPaths": [
+            "/Users/rafwild8/Documents/lean_ws/Library"
+        ],
+        "files.autoSave": "afterDelay",
+        "files.exclude": {
+            "**.vscode": true,
+            "**.idea": true,
+            "config.json": true,
+            "qc.code-workspace": true,
+            "bin": true,
+            "obj": true,
+            "backtests": true,
+            "live": true,
+            "optimizations": true,
+            "storage": true,
+            "report": true,
+            "__pycache__": true,
+            ".ipynb_checkpoints": true,
+            ".idea": true,
+            ".vscode": true
+        },
+        "files.watcherExclude": {
+            "bin/**": true,
+            "obj/**": true,
+            "backtests/**": true,
+            "live/**": true,
+            "optimizations/**": true,
+            "storage/**": true,
+            "report/**": true,
+            "__pycache__/**": true,
+            ".ipynb_checkpoints/**": true,
+            ".idea/**": true,
+            ".vscode/**": true
+        },
+        "files.readonlyInclude": {
+            "**/*.py": false,
+            "**/*.cs": false,
+            "**/*.ipynb": false,
+            "/Users/rafwild8/Documents/lean_ws/lstm_bem114/**/*.py": false,
+            "/Users/rafwild8/Documents/lean_ws/lstm_bem114/**/*.cs\"": false,
+            "/Users/rafwild8/Documents/lean_ws/lstm_bem114/**/*.ipynb": false,
+            "/Users/rafwild8/Documents/lean_ws/LSTM_Industries/**/*.py": false,
+            "/Users/rafwild8/Documents/lean_ws/LSTM_Industries/**/*.cs\"": false,
+            "/Users/rafwild8/Documents/lean_ws/LSTM_Industries/**/*.ipynb": false
+        }
+    }
+}
