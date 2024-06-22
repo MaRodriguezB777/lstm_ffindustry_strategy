@@ -5,6 +5,10 @@ import torch.nn as nn
 from torch.autograd import Variable
 # endregion
 
+URLS = {
+    2023: "https://drive.google.com/uc?export=download&id=1HzWs0r3hzGVTRVUwoKqt0tIY6nWLF6Ux"
+}
+
 class SimpleLSTM(nn.Module):
     def __init__(self, input_size, output_size, params=None):
         super(SimpleLSTM, self).__init__()
@@ -53,21 +57,3 @@ class SimpleLSTM(nn.Module):
         out = self.activation_fn(hn)
         out = self.fc_linear(out)
         return out
-
-def load_model_custom(
-    path, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-):
-    print("PATH TO MODEL: ", path)
-    final_save = torch.load(path)
-
-    model_state_dict = final_save["model_state_dict"]
-    model_params = final_save["model_params"]
-    model_type = final_save["model_type"]
-    input_size = final_save["input_size"]
-    output_size = final_save["output_size"]
-
-    model = model_type(input_size, output_size, params=model_params)
-    model.load_state_dict(model_state_dict)
-    model.to(device)
-
-    return model
