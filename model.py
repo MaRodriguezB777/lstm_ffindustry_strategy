@@ -5,8 +5,12 @@ import torch.nn as nn
 from torch.autograd import Variable
 # endregion
 
-URLS = {
+URLS_NORMALIZED = {
     2023: "https://drive.google.com/uc?export=download&id=1HzWs0r3hzGVTRVUwoKqt0tIY6nWLF6Ux"
+}
+
+URLS_UNNORMALIZED = {
+    2023: "https://drive.google.com/uc?export=download&id=1E_QVWqE2lkMVGBcbF3MpfFPASSwXBOrP"
 }
 
 class SimpleLSTM(nn.Module):
