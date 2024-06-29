@@ -8,8 +8,11 @@ import pandas as pd
 # endregion
 
 PRIOR_DAYS = 5
-TOP_STOCKS = 25
+TOP_STOCKS = 10
 STOP_LOSS_THRESHOLD = 0.05   # 5% stop loss
+SHORT_STRATEGY = True
+LONG_SHORT_RATIO = 0.95
+INCLUDE_FEES = False
 
 class LSTM_Industries(QCAlgorithm):
     def Initialize(self):
@@ -33,7 +36,7 @@ class LSTM_Industries(QCAlgorithm):
 
         
         self.Schedule.On(self.DateRules.EveryDay(), 
-                         self.TimeRules.at(9, 30),
+                         self.TimeRules.at(15, 30),
                          self.Rebalance)
         
         # self.Schedule.On(self.DateRules.EveryDay(), 
@@ -62,7 +65,8 @@ class LSTM_Industries(QCAlgorithm):
                 if self.ticker_exists(ticker):
                     valid_count += 1
                     equity = self.AddEquity(ticker, Resolution.DAILY)
-                    equity.set_fee_model(ConstantFeeModel(0))
+                    if not INCLUDE_FEES:
+                        equity.set_fee_model(ConstantFeeModel(0))
                     ind_stocks[industry][ticker] = equity
 
         self.Log(f"Total stocks: {total_count}, valid stocks: {valid_count}")
@@ -184,7 +188,7 @@ class LSTM_Industries(QCAlgorithm):
         
         for industry in long_industries:
             for ticker, weight in all_weights[industry].items():
-                self.SetHoldings(ticker, 0.5 * weight/num_long_industries)
+                self.SetHoldings(ticker, LONG_SHORT_RATIO * weight/num_long_industries)
                 self.purchase_prices_long[ticker] = self.Securities[ticker].Price
         
     def go_short(self, short_industries, all_weights):
@@ -192,7 +196,7 @@ class LSTM_Industries(QCAlgorithm):
         
         for industry in short_industries:
             for ticker, weight in all_weights[industry].items():
-                self.SetHoldings(ticker, -0.5 * weight/num_short_industries)
+                self.SetHoldings(ticker, -LONG_SHORT_RATIO * weight/num_short_industries)
                 self.purchase_prices_short[ticker] = self.Securities[ticker].Price
     
     def Rebalance(self):
@@ -233,8 +237,12 @@ class LSTM_Industries(QCAlgorithm):
                 self.Log(f"long_industries: {long_industries}")
                 self.Log(f"short_industries: {short_industries}")
             
-            self.go_short(short_industries, all_weights)
-            self.go_long(long_industries, all_weights)
+            if not SHORT_STRATEGY:
+                self.go_long(long_industries, all_weights)
+                self.go_short(short_industries, all_weights)
+            else:
+                self.go_long(short_industries, all_weights)
+                self.go_short(long_industries, all_weights)
         
         self.Log(f"Portfolio value: {self.Portfolio.TotalPortfolioValue}")
         self.Log(f"Portfolio cash: {self.Portfolio.Cash}")

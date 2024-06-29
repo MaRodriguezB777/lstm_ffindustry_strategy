@@ -61,3 +61,4 @@ class SimpleLSTM(nn.Module):
         out = self.activation_fn(hn)
         out = self.fc_linear(out)
         return out
+

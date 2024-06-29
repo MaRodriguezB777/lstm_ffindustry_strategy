@@ -1,3 +1,6 @@
+#region imports
+from AlgorithmImports import *
+#endregion
 ALL_IND_STOCKS = \
 {
   'Agric': ['AAGR', 'AGFY', 'ALCO', 'AVO', 'CALM', 'CEAD', 'CVGW', 'EDBL', 'IVP', 'LMNR', 'NCRA', 'RKDA', 'SANW', 'SEED', 'SISI', 'VFF', 'AAGRW', 'CEADW', 'EDBLW', 'AGRO', 'BV', 'CTVA', 'DOLE', 'FDP', 'LND', 'LOCL', 'SITE'],
