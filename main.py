@@ -25,12 +25,12 @@ class LSTM_Industries(QCAlgorithm):
         self.set_cash(50_000)  # Set Strategy Cash
 
         self.set_brokerage_model(BrokerageName.TD_AMERITRADE, AccountType.MARGIN)
-
         self.settings.minimum_order_margin_portfolio_percentage = 0
 
+        # https://www.quantconnect.com/forum/discussion/13989/proper-way-to-differentiate-between-universes/
         self.universe_settings.resolution = Resolution.DAILY
-        self.add_universe(self.SelectionFilter)
-
+        self.my_universe = self.add_universe(self.SelectionFilter)
+        
         # Load model
         self.model = load_model(self, URLS_UNNORMALIZED[2023])
 
