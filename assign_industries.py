@@ -4,13 +4,50 @@
 from sec_api import MappingApi
 import os
 import pandas as pd
-
+import json
 
 API_KEY = "a403d5c05f8508aeba59443977a060e318f5feb778ff5416701f3b36e0609ef9"
 EXCHANGES = ["NASDAQ", "NYSE", "AMEX"]
 SICCODES_FILE = "siccodes49.txt"
 OUTPUT_DIR = "industry_stocks_data"
+MAPPING_FILE = "morningstar_to_ff_mapping.txt"
+MORNINGSTAR_TO_FF_FILE = "morningstar_to_ff.json"
+FF_IND_TO_SIC_FILE = "ind_siccodes.json"
 
+def map_morningstar_to_ff(mapping_file, output_file_name):
+    """
+    Setup one-to-many mapping between morningstar and ff industries
+    """
+    with open(mapping_file, "r") as f:
+        mapping = f.readlines()
+    f.close()
+
+    morningstar_to_ff = {}
+    for line in mapping:
+        morningstar, _, ff = line.strip().split()[0:3]
+        if morningstar not in morningstar_to_ff:
+            morningstar_to_ff[morningstar] = []
+        morningstar_to_ff[morningstar].append(ff)
+
+    # save dict to file for future use
+    with open(output_file_name, "w") as f:
+        json.dump(morningstar_to_ff, f)
+
+def create_ff_ind_to_siccodes(siccodes_data):
+    """
+    Takes in input of `load_siccodes_data`
+    """
+    ind_siccodes = {}
+    for sic, ind_idx in siccodes_data['siccode_to_idx'].items():
+        ind_abbr = siccodes_data['industry_abbrs'][ind_idx]
+        if ind_abbr not in ind_siccodes:
+            ind_siccodes[ind_abbr] = []
+        ind_siccodes[ind_abbr].append(sic)
+
+    # save to json
+    with open(IND_TO_SIC_FILE, "w") as f:
+        json.dump(ind_siccodes, f)
+    return ind_siccodes
 
 def load_exhanges_data(api_key, exchanges):
     mapping_api = MappingApi(api_key=api_key)
@@ -133,3 +170,4 @@ def assign_industries_main(api_key, exchanges, siccodes_file, output_dir):
 
 if __name__ == "__main__":
     assign_industries_main(API_KEY, EXCHANGES, SICCODES_FILE, OUTPUT_DIR)
+
