@@ -13,7 +13,13 @@ URLS_UNNORMALIZED = {
     2023: "https://drive.google.com/uc?export=download&id=1E_QVWqE2lkMVGBcbF3MpfFPASSwXBOrP"
 }
 
+MODEL_KEY = 'LSTM_49_Industries_2023' 
+
 class SimpleLSTM(nn.Module):
+    """
+    Simple LSTM model
+    
+    Inputs a sequence of industry returns (percentages) and outputs a prediction for the next day's returns."""
     def __init__(self, input_size, output_size, params=None):
         super(SimpleLSTM, self).__init__()
         self.input_size = input_size

@@ -13,10 +13,14 @@ FF_COLS = "Agric,Food ,Soda ,Beer ,Smoke,Toys ,Fun  ,Books,Hshld,Clths,Hlth ,Med
 
 def load_model(
     algo: QCAlgorithm,
-    url: str,
+    url: str = None,
+    model_key: str = None,
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ):
-    base64_str = algo.download(url)
+    if algo.object_store.contains_key(model_key):
+        base64_str = algo.object_store.read(model_key)
+    else:
+        base64_str = algo.download(url)
     base64_bytes = base64_str.encode("ascii")
     model = base64.b64decode(base64_bytes)
     final_save = pickle.loads(model)
