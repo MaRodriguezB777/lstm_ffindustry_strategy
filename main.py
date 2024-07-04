@@ -6,176 +6,182 @@ from model_utils import load_model, predict, FF_COLS
 import numpy as np
 import pandas as pd
 from datetime import timedelta
-
+from constants import *
+from alpha import FFIndustryAlphaModel
 # endregion
-
-PRIOR_DAYS = 5
-TOP_STOCKS = 10
-TOP_STOCKS_PERCENT = 0.2
-STOP_LOSS_THRESHOLD = 0.05  # 5% stop loss
-SHORT_STRATEGY = True
-LONG_SHORT_RATIO = 0.95
-MIN_VOLUME = 20_000
-INCLUDE_FEES = False
-LOGGING = False
-DEBUG = False
 
 
 class LSTM_Industries(QCAlgorithm):
     def Initialize(self):
-        self.set_start_date(2024, 3, 26)  # Set Start Date
-        self.set_end_date(2024, 3, 26)  # Set End Date
+        self.set_start_date(2023, 11, 1)  # Set Start Date
+        self.set_end_date(2024, 3, 28)  # Set End Date
         self.set_cash(50_000)  # Set Strategy Cash
-
+        self.alpha_model = FFIndustryAlphaModel(self, MODEL_KEY)
+        self.set_alpha(self.alpha_model)
         self.set_brokerage_model(BrokerageName.TD_AMERITRADE, AccountType.MARGIN)
         self.settings.minimum_order_margin_portfolio_percentage = 0
 
         # https://www.quantconnect.com/forum/discussion/13989/proper-way-to-differentiate-between-universes/
+        self.universe_settings.asynchronous = False
         self.universe_settings.resolution = Resolution.DAILY
         # https://www.quantconnect.com/docs/v2/writing-algorithms/securities/asset-classes/us-equity/requesting-data#11-Data-Normalization
         self.universe_settings.data_normalization_mode = DataNormalizationMode.RAW
         # Filter Stocks
-        self.my_universe = self.add_universe(self.SelectionFilter)
+        self.add_universe_selection(FundamentalUniverseSelectionModel(self.SelectionFilter))
+        # Set benchmark
+        self.set_benchmark("SPY")
+
+        # Load model
+        self.model = load_model(self, model_key=MODEL_KEY)
 
         self.prev_close = {}
         self.stock_return_windows = {}
 
-        self.industry_stocks = {}
-        
-        # Load model
-        self.model = load_model(self, model_key=MODEL_KEY)
-
-        # Warming up
-        # self.set_warm_up(timedelta(days=PRIOR_DAYS + 1))
-
-        # Set benchmark
-        self.set_benchmark("SPY")
-
         # self.Schedule.On(self.DateRules.EveryDay(),
         #                  self.TimeRules.at(9, 30),
         #                  self.Rebalance)
-
         # self.Schedule.On(self.DateRules.EveryDay(),
         #                  self.TimeRules.Every(TimeSpan.FromHours(1)),
         #                  self.CheckStopLoss)
+        # Warming up
+        # self.set_warm_up(timedelta(days=PRIOR_DAYS + 1))
 
-    def SelectionFilter(self, coarse: list[Fundamental]):
+
+    def SelectionFilter(self, fundamental: list[Fundamental]):
+        '''
+        Chooses the stocks to be included in the universe.
+        '''
         if LOGGING:
-            self.log(f"SelectionFilter() called at {self.time}.")
-        # https://www.quantconnect.com/forum/discussion/12234/exchange-id-mapping/
-        if DEBUG:
-            if self.time.date().day == 28:
-                out = [x.symbol for x in coarse if x.symbol.value in ['AAPL']]
+            self.log(f"main.SelectionFilter() called at {self.time}.")
+        if SUPER_DEBUG:
+            if self.time.date().day == 26:
+                stocks = [x for x in fundamental if x.symbol.value in ['AAPL']]
             else: 
-                out = [x.symbol for x in coarse if (x.symbol.value in ['MSFT', 'NVDA'])]
+                stocks = [x for x in fundamental if (x.symbol.value in ['DWAC', 'NVDA'])]
             if LOGGING:
+                for stock in stocks:
+                    self.alpha_model.stock_inds[stock.symbol] = SIC_TO_FF_IND[stock.asset_classification.sic]
+                out = [x.symbol for x in stocks]
                 self.log(f"out: {[x.value for x in out]}")
             return out
         
+        # https://www.quantconnect.com/forum/discussion/12234/exchange-id-mapping/
         exchanges = ["NAS", "NYS", "ASE"]
 
+        # fundamental data filter
+        filter = [x for x in fundamental if x.has_fundamental_data]
         # exchange filter
-        filter = [x for x in coarse if x.security_reference.exchange_id in exchanges]
-        filter = [x for x in filter if x.asset_classification.sic in ALL_SICS]
+        filter = [x for x in fundamental if x.security_reference.exchange_id in exchanges]
 
         final_stocks = []
         for ind_abbr in FF_IND_TO_SIC.keys():
             sics = FF_IND_TO_SIC[ind_abbr]
             ind_filter = [x for x in filter if x.asset_classification.sic in sics]
-            if DEBUG:
+            if SUPER_DEBUG:
                 self.log(f"For industry {ind_abbr}, the siccodes are {sics}.")
                 self.log(f"For industry {ind_abbr}, there are {len(ind_filter)} stocks.")
-            sorted_stocks = sorted(ind_filter, key=lambda x: x.volume, reverse=True)
-            final_stocks.extend(sorted_stocks[:TOP_STOCKS])
+            sorted_stocks = sorted(ind_filter, key=lambda x: x.volume, reverse=True)[:TOP_STOCKS]
+            for stock in sorted_stocks:
+                self.alpha_model.stock_inds[stock.symbol] = ind_abbr
+
+            final_stocks.extend(sorted_stocks)
 
         out = [x.symbol for x in final_stocks]
         return out
 
 
-    def on_securities_changed(self, changes):
-        if LOGGING:
-            self.log(f"securities_changed() called at {self.time}.")
-        for security in changes.added_securities:
-            if DEBUG:
-                self.log(f"Added: {security.symbol}")
-            self.setup_rolling_window(security.symbol)
+    # def on_securities_changed(self, changes):
+    #     '''
+    #     Handles what happens when new securities are added or old ones removed
+    #     from the universe.
+    #     '''
+    #     if LOGGING:
+    #         self.log(f"securities_changed() called at {self.time}.")
+    #     for security in changes.added_securities:
+    #         if DEBUG:
+    #             self.log(f"Added: {security.symbol}")
+    #         self.setup_rolling_window(security.symbol)
 
-        for security in changes.removed_securities:
-            if DEBUG:
-                self.log(f"Removed: {security.symbol}")
+    #     for security in changes.removed_securities:
+    #         if DEBUG:
+    #             self.log(f"Removed: {security.symbol}")
             
-            try:
-                self.prev_close.pop(security.symbol)
-            except KeyError:
-                self.error(f"KeyError: {security.symbol}. Symbol not found in prev_close but was removed from universe.")
-            try:
-                self.stock_return_windows.pop(security.symbol)
-            except KeyError:
-                self.debug(f"KeyError: {security.symbol}. Symbol not found in stock_return_windows but was removed from universe. Means stock was only in universe for only one day or something is wrong...")
+    #         try:
+    #             self.prev_close.pop(security.symbol)
+    #         except KeyError:
+    #             self.error(f"KeyError: {security.symbol}. Symbol not found in prev_close but was removed from universe.")
+    #         try:
+    #             self.stock_return_windows.pop(security.symbol)
+    #         except KeyError:
+    #             self.debug(f"KeyError: {security.symbol}. Symbol not found in stock_return_windows but was removed from universe. Means stock was only in universe for only one day or something is wrong...")
 
-            if security.invested:
-                self.liquidate(security.symbol)
-
-
-    def setup_data_window(self, data: Slice):
-        for (symbol, bar) in data.bars.items():
-            if bar is None:
-                self.error(f"bar is None for {symbol} but in data.bars.")
-                continue
-            self.setup_rolling_window(symbol, bar.close)
+    #         if security.invested:
+    #             self.liquidate(security.symbol)
 
 
-    def setup_rolling_window(self, symbol: Symbol, new_close=None):
-        history_length = 10 # should be enough / NOTE: This is calendar days not trading days
-        max_length = 20
-        if symbol not in self.stock_return_windows:
-            if DEBUG:
-                self.log(f"Setting up initial rolling window for {symbol}.")
-            self.prev_close[symbol] = None
-            self.stock_return_windows[symbol] = RollingWindow[float](PRIOR_DAYS)
+    # def setup_data_window(self, data: Slice):
+    #     '''
+    #     Adds current day data to the rolling window.'''
+    #     for (symbol, bar) in data.bars.items():
+    #         if bar is None:
+    #             self.error(f"bar is None for {symbol} but in data.bars.")
+    #             continue
+    #         self.setup_rolling_window(symbol, bar.close)
 
-            history = self.history(symbol, history_length, Resolution.DAILY) # don't include the current day so that we can get the data from OnData
 
-            # need + 1 to get percentage change for PRIOR_DAYS days
-            while(len(history) < PRIOR_DAYS):
-                history_length += 5
-                history = self.history(symbol, history_length, Resolution.DAILY)
+    # def setup_rolling_window(self, symbol: Symbol, new_close=None):
+    #     '''
+    #     Logic for rolling window setup.'''
+    #     history_length = 10 # should be enough / NOTE: This is calendar days not trading days
+    #     max_length = 20
+    #     if symbol not in self.stock_return_windows:
+    #         if DEBUG:
+    #             self.log(f"Setting up initial rolling window for {symbol}.")
+    #         self.prev_close[symbol] = None
+    #         self.stock_return_windows[symbol] = RollingWindow[float](PRIOR_DAYS)
 
-                # there is not enough history to make PRIOR_DAYS days of returns
-                if history_length >= max_length:
-                    if len(history) == 1: # if there is only 1 day of history, onData handles it
-                        return
-                    elif len(history) == 2: # if there are 2 days of history, then there is no return to create but there is a close price
-                        self.prev_close[symbol] = history['close'].iloc[-2]
-                        return
-                    else:
-                        break
+    #         history = self.history(symbol, history_length, Resolution.DAILY) # don't include the current day so that we can get the data from OnData
 
-            history = history.iloc[-(PRIOR_DAYS + 1):-1]
+    #         # need + 1 to get percentage change for PRIOR_DAYS days
+    #         while(len(history) < PRIOR_DAYS):
+    #             history_length += 5
+    #             history = self.history(symbol, history_length, Resolution.DAILY)
+
+    #             # there is not enough history to make PRIOR_DAYS days of returns
+    #             if history_length >= max_length:
+    #                 if len(history) == 1: # if there is only 1 day of history, onData handles it
+    #                     return
+    #                 elif len(history) == 2: # if there are 2 days of history, then there is no return to create but there is a close price
+    #                     self.prev_close[symbol] = history['close'].iloc[-2]
+    #                     return
+    #                 else:
+    #                     break
+
+    #         history = history.iloc[-(PRIOR_DAYS + 1):-1]
             
                                 
-            stock_return = history["close"].pct_change() * 100
-            stock_return = stock_return.dropna()
+    #         stock_return = history["close"].pct_change() * 100
+    #         stock_return = stock_return.dropna()
 
-            for _return in stock_return:
-                self.stock_return_windows[symbol].add(_return)
+    #         for _return in stock_return:
+    #             self.stock_return_windows[symbol].add(_return)
 
-            self.prev_close[symbol] = history['close'].iloc[-1]
+    #         self.prev_close[symbol] = history['close'].iloc[-1]
 
-        elif new_close is not None:
-            if DEBUG:
-                self.log(f"Updating rolling windows for {symbol}.")
+    #     elif new_close is not None:
+    #         if DEBUG:
+    #             self.log(f"Updating rolling windows for {symbol}.")
 
-            prev_close = self.prev_close[symbol]
-            self.prev_close[symbol] = new_close
+    #         prev_close = self.prev_close[symbol]
+    #         self.prev_close[symbol] = new_close
 
-            new_return = (new_close - prev_close) / prev_close * 100
-            self.stock_return_windows[symbol].add(new_return)
+    #         new_return = (new_close - prev_close) / prev_close * 100
+    #         self.stock_return_windows[symbol].add(new_return)
 
-        if DEBUG:
-            self.log(f"prev_close[{symbol}]: {self.prev_close[symbol]}")
-            self.log(f"stock_return_windows[{symbol}]: {[item for item in self.stock_return_windows[symbol]]}")
-            return
+    #     if DEBUG:
+    #         self.log(f"prev_close[{symbol}]: {self.prev_close[symbol]}")
+    #         self.log(f"stock_return_windows[{symbol}]: {[item for item in self.stock_return_windows[symbol]]}")
+    #         return
 
 
     def ticker_exists(self, ticker):
@@ -405,8 +411,8 @@ class LSTM_Industries(QCAlgorithm):
         # if self.is_warming_up:
         #     return
         if LOGGING:
-            self.log(f"OnData() called at {self.time}.")
-        self.setup_data_window(data)
+            self.log(f"main.OnData() called at {self.time}.")
+        # self.setup_data_window(data)
 
         # print all data
         # self.log("OnData() called. Printing all data.")
@@ -415,3 +421,23 @@ class LSTM_Industries(QCAlgorithm):
         #     self.log(f"{key}: {value}")
 
         # self.latest_data = data
+
+    def on_delisting(self, delistings: Delistings):
+        for symbol in delistings.keys():
+            delisting = Delisting(delistings[symbol])
+            self.log(f"Delisting: {delisting.symbol} {delisting.type}")
+
+    def on_brokerage_disconnect(self):
+        self.log("Brokerage disconnected.")
+
+    def on_brokerage_reconnect(self):
+        self.log("Brokerage reconnected.")
+
+    def dividends(self, dividends: Dividends):
+        self.log(f"Dividends: {dividends.Symbol} {dividends}")
+
+    def on_symbol_changed_events(self, changes: SymbolChangedEvents):
+        for symbol in changes.keys():
+
+            change = changes[symbol]
+            self.log(f"Symbol changed: {change.symbol} {change}")
