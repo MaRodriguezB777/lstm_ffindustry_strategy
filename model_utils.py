@@ -2,13 +2,13 @@
 from AlgorithmImports import *
 import torch
 import numpy as np
-from torch.utils.data import DataLoader, TensorDataset
-import pandas as pd
 from model import SimpleLSTM
 import pickle
 import base64
+from constants import PRIOR_DAYS, LOGGING
 # endregion
 
+# Gives correct order of FF industries as they are in the model
 FF_COLS = "Agric,Food ,Soda ,Beer ,Smoke,Toys ,Fun  ,Books,Hshld,Clths,Hlth ,MedEq,Drugs,Chems,Rubbr,Txtls,BldMt,Cnstr,Steel,FabPr,Mach ,ElcEq,Autos,Aero ,Ships,Guns ,Gold ,Mines,Coal ,Oil  ,Util ,Telcm,PerSv,BusSv,Hardw,Softw,Chips,LabEq,Paper,Boxes,Trans,Whlsl,Rtail,Meals,Banks,Insur,RlEst,Fin  ,Other".replace(" ", "").split(",")
 
 def load_model(
@@ -39,50 +39,39 @@ def load_model(
 
     return model
 
-def prepare_X(industry_returns):
-    prior_days = len(industry_returns[list(industry_returns.keys())[0]])
-    num_industries = len(industry_returns.keys())
+def prepare_X_LSTM(algo: QCAlgorithm, industry_returns):
+    '''
+    Args:
+       industry_returns: np.array of shape (num_industries, PRIOR_DAYS) with the oldest day's return at index 0
+    '''
+    if LOGGING:
+        algo.log(f"model_utils.prepare_X() called at {algo.time}.")
+    if len(industry_returns) == 0:
+        algo.log(f"Warning. No industry returns to prepare X with.")
+        return torch.tensor(np.zeros(shape=(1, PRIOR_DAYS, len(FF_COLS))), dtype=torch.float32)
     
-    X = np.zeros(shape=(1, prior_days, num_industries))
-    for industry in FF_COLS:
-        X[0, :, FF_COLS.index(industry)] = industry_returns[industry]
+    num_industries = len(FF_COLS)
+    X = np.zeros(shape=(1, PRIOR_DAYS, num_industries))
+
+    for ind_idx in range(num_industries):
+        X[0, :, ind_idx] = industry_returns[ind_idx]
     
     return torch.tensor(X, dtype=torch.float32)
 
 def predict(
+    algo: QCAlgorithm,
     model,
     industry_returns,
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     mean=None,
     std=None,
 ):
-    ### DOESN"T SEEM CORRECT -> don't see a data object
-    # def normalize_column(column):
-    #     # check if column name is date
-    #     if column.name == "date":
-    #         return column
-
-    #     # Exclude the value V from calculations
-    #     filtered_values = column[column != invalid_val]
-    #     mean = filtered_values.mean()
-    #     std = filtered_values.std()
-
-    #     if std <= 0:
-    #         raise ValueError(f"Standard deviation {std} is zero or negative")
-
-    #     column = column.apply(lambda x: (x - mean) / std if x != invalid_val else x)
-
-    #     return column
-
-    # if mean is not None and std is not None:
-    #     data = data.apply(normalize_column)
-
-    #     filtered_values = data[data != invalid_val]
-    #     mean = filtered_values.mean()
-    #     std = filtered_values.std()
-
+    '''
+    Args:
+       industry_returns: np.array of shape (num_industries, PRIOR_DAYS) with the oldest day's return at index 0
+    '''
     model.to(device)
-    X = prepare_X(industry_returns)
+    X = prepare_X_LSTM(algo, industry_returns)
 
     with torch.no_grad():
         pred = model(X).detach().cpu().numpy()

@@ -113,5 +113,3 @@ SIC_TO_FF_IND = {}
 for ff_ind, sics in FF_IND_TO_SIC.items():
     for sic in sics:
         SIC_TO_FF_IND[sic] = ff_ind
-
-FF_COLS = set(FF_IND_TO_SIC.keys())

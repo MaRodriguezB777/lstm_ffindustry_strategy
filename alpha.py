@@ -5,16 +5,18 @@ from QuantConnect.Algorithm.Framework.Alphas import Insight
 from QuantConnect.Data import Slice
 from QuantConnect.Data.UniverseSelection import SecurityChanges
 from System.Collections.Generic import IEnumerable
-from model import SimpleLSTM, MODEL_KEY
-from model_utils import load_model
+from model_utils import load_model, FF_COLS, predict
 from constants import PRIOR_DAYS, LOGGING, DEBUG
+import numpy as np
 from datetime import timedelta
-from all_ind_stocks import SIC_TO_FF_IND, FF_COLS
-
 # endregion
 
 # Your New Python File
 class FFIndustryAlphaModel(AlphaModel):
+    ind_stock_return_windows: Dict[str, Dict[Symbol, RollingWindow[float]]]
+    prev_close: Dict[Symbol, float]
+    stock_inds: Dict[Symbol, str]
+
     def __init__(self, algo: QCAlgorithm, model_key) -> None:
         self.name = "FFIndustryAlphaModel"
         self.model = load_model(algo, model_key=model_key)
@@ -148,26 +150,123 @@ class FFIndustryAlphaModel(AlphaModel):
             if symbol in algo.universe_manager.active_securities:
                 self.setup_rolling_window(algo, symbol, new_close=data[symbol].close)
 
+    def setup_industry_returns(self, algo: QCAlgorithm):
+        '''
+        Ret: np.array of shape (num_industries, PRIOR_DAYS) with the oldest
+        day's return at index 0
+        '''
+        stock_market_caps = {}
+        industry_market_caps = {}
+        if LOGGING:
+            algo.log(f"In alpha.setup_industry_returns()")
+        ind_returns = np.zeros(shape=(len(FF_COLS), PRIOR_DAYS))
+        for ind_idx, industry in enumerate(FF_COLS):
+            if DEBUG:
+                algo.log(f"Setting up industry returns for {industry}.")
+            try: 
+                stock_returns = self.ind_stock_return_windows[industry]
+            except KeyError:
+                algo.log(f"KeyError. Could not find industry {industry} in ind_stock_return_windows. Likely means that there are no stocks in this industry. Here are the industries present in ind_stock_return_windows: {self.ind_stock_return_windows.keys()}.")
+                continue
 
-    # def prepare_X(self):
-    #     for ind_abbr in FF_COLS:
+            # day_lag_returns[0] is the oldest day's returns
+            day_lag_returns = np.zeros(PRIOR_DAYS)
+            ind_market_cap = 0
             
-    #     X = np.zeros(shape=(1, prior_days, num_industries))
-    #     for industry in FF_COLS:
-    #         X[0, :, FF_COLS.index(industry)] = industry_returns[industry]
-        
-    #     return torch.tensor(X, dtype=torch.float32)
+            for symbol, window in stock_returns.items():
+                if DEBUG:
+                    algo.log(f"Adding stock returns for {symbol} in {industry}.")
+                try:
+                    market_cap = algo.securities[symbol].fundamentals.market_cap
+                    stock_market_caps[symbol] = market_cap
+                    ind_market_cap += market_cap
+                except KeyError:
+                    algo.log(f"KeyError. Could not find market cap for {symbol}")
+                    continue
 
+                for i, _return in enumerate(window):
+                    day_lag_returns[PRIOR_DAYS - i - 1] += _return * market_cap
+
+            industry_market_caps[industry] = ind_market_cap
+            if ind_market_cap == 0:
+                algo.log(f"Warning. Market cap for {industry} is 0. This is likely because there are no stocks in this industry.")
+            else:
+                day_lag_returns /= ind_market_cap
+
+            if DEBUG:
+                algo.log(f"day_lag_returns for {industry}: {day_lag_returns}")
+            
+            ind_returns[ind_idx] = day_lag_returns
+
+        if DEBUG:
+            algo.log(f"ind_returns: {ind_returns}")
+        return ind_returns, stock_market_caps, industry_market_caps
+    
+    def get_long_short_industries(self, pred):
+        pred = pred[0]
+
+        long_cutoff = np.percentile(pred, 90)
+        short_cutoff = np.percentile(pred, 10)
+
+        long_industries = []
+        short_industries = []
+        for i, x in enumerate(pred):
+            if x >= long_cutoff:
+                long_industries.append(FF_COLS[i])
+            elif x <= short_cutoff:
+                short_industries.append(FF_COLS[i])
+
+        return long_industries, short_industries
+    
+    def make_insights(self, algo: QCAlgorithm, industries, stock_mkt_caps, ind_mkt_caps, insight_direction: InsightDirection):
+        if LOGGING:
+            algo.log(f"alpha_model.make_insights() called at {algo.time}.")
+
+        insights = []
+        for ind_abbr in industries:
+            if DEBUG:
+                algo.log(f"Getting {insight_direction} insights for {ind_abbr}.")
+            for symbol in self.ind_stock_return_windows[ind_abbr].keys():
+                if DEBUG:
+                    algo.log(f"Making flat insight for {symbol}.")
+                weight = stock_mkt_caps[symbol] / ind_mkt_caps[ind_abbr]
+                insight = Insight.price(symbol=symbol, period=timedelta(days=1), direction=insight_direction, weight=weight)
+                insights.append(insight)
+        
+        return insights
+
+    def get_insights(self, algo: QCAlgorithm, ind_returns, stock_mkt_caps, ind_mkt_caps):
+        '''
+        Args:
+            ind_returns: np.array of shape (num_industries, PRIOR_DAYS) with the
+            oldest day's return at index 0
+        '''
+        if LOGGING:
+            algo.log(f"alpha_model.get_insights() called at {algo.time}.")
+        model_predictions = predict(algo, self.model, ind_returns)
+        if DEBUG:
+            algo.log(f"pred: {list(model_predictions)}")
+            algo.log(f"pred.shape: {model_predictions.shape}")
+        long_industries, short_industries = self.get_long_short_industries(model_predictions)
+        flat_industries = set(FF_COLS) - set(long_industries) - set(short_industries)
+
+        long_insights = self.make_insights(algo, long_industries, stock_mkt_caps, ind_mkt_caps, InsightDirection.UP)
+        short_insights = self.make_insights(algo, short_industries, stock_mkt_caps, ind_mkt_caps, InsightDirection.DOWN)
+        flat_insights = self.make_insights(algo, flat_industries, stock_mkt_caps, ind_mkt_caps, InsightDirection.FLAT)
+
+        return long_insights + short_insights + flat_insights
 
     def update(self, algo: QCAlgorithm, data: Slice) -> IEnumerable[Insight]:
         if LOGGING:
             algo.log(f"alpha_model.update() called at {algo.time}.")
-            algo.log(f"Data is from {data.time}.")
         if algo.is_warming_up:
             return
+        if data.bars.keys() is None:
+            algo.log(f"Warning. The slice of data has no bars.")
+            return
         self.setup_data_window(algo, data)
-        # self.prepare_X()
+        ind_returns, stock_mkt_caps, ind_mkt_caps = self.setup_industry_returns(algo)
 
-        insights = []
+        insights = self.get_insights(algo, ind_returns, stock_mkt_caps, ind_mkt_caps)
+
         return insights
-
