@@ -23,7 +23,6 @@ class FFIndustryAlphaModel(AlphaModel):
         self.prev_close = {}
         self.ind_stock_return_windows = {}
         self.stock_inds = {} # derived from universe selection. Could contain stocks from previous day, not reset after each universe selection
-        self.predictions = None
     
     def on_securities_changed(self, algo: QCAlgorithm, changes: SecurityChanges) -> None:
         '''
@@ -63,7 +62,6 @@ class FFIndustryAlphaModel(AlphaModel):
             if security.invested:
                 algo.liquidate(security.symbol) # TODO: might want to send signal instead of directly liquidating
 
-
     def setup_rolling_window(self, algo: QCAlgorithm, symbol: Symbol, new_close=None):
         '''
         Logic for rolling window setup.'''
@@ -95,6 +93,9 @@ class FFIndustryAlphaModel(AlphaModel):
 
                 # there is not enough history to make PRIOR_DAYS days of returns
                 if history_length >= max_history_length:
+                    if len(history) == 0:
+                        algo.log(f"Warning. No history found for {symbol} but was in universe.")
+                        return
                     if len(history) == 1: # if there is only 1 day of history, onData handles it
                         return
                     elif len(history) == 2: # if there are 2 days of history, then there is no return to create but there is a close price
@@ -131,7 +132,6 @@ class FFIndustryAlphaModel(AlphaModel):
         if DEBUG:
             algo.log(f"prev_close[{symbol}]: {self.prev_close[symbol]}")
             algo.log(f"ind_stock_return_windows[{industry}][{symbol}]: {[item for item in self.ind_stock_return_windows[industry][symbol]]}")
-
 
     def setup_data_window(self, algo: QCAlgorithm, data: Slice):
         '''

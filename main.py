@@ -8,22 +8,31 @@ import pandas as pd
 from datetime import timedelta
 from constants import *
 from alpha import FFIndustryAlphaModel
+from my_brokerage import MyBacktestTDBrokerage
 # endregion
 
 
 class LSTM_Industries(QCAlgorithm):
     def Initialize(self):
-        self.set_start_date(2024, 3, 1)  # Set Start Date
-        self.set_end_date(2024, 3, 28)  # Set End Date
-        self.set_cash(50_000)  # Set Strategy Cash
+        self.set_start_date(2023, 1, 1)  # Set Start Date
+        self.set_end_date(2024, 1, 1)  # Set End Date
+        self.set_cash(1_000_000)  # Set Strategy Cash
+
+        # Set benchmark
+        self.set_benchmark("SPY")
+
+        # Set brokerage and settings
+        # if INCLUDE_FEES:
+            # self.set_brokerage_model(TDAmeritradeBrokerageModel())
+        # else:
+            # self.set_brokerage_model(DefaultBrokerageModel())
+        # self.default_order_properties.time_in_force = TimeInForce.DAY
+        # self.set_security_initializer(lambda x: x.set_fee_model(TDAmeritradeFeeModel()))
+        self.settings.minimum_order_margin_portfolio_percentage = 0
 
         # Set alpha model
         self.alpha_model = FFIndustryAlphaModel(self, MODEL_KEY)
         self.set_alpha(self.alpha_model)
-
-        # Set brokerage
-        self.set_brokerage_model(BrokerageName.TD_AMERITRADE, AccountType.MARGIN)
-        self.settings.minimum_order_margin_portfolio_percentage = 0
 
         # Set universe settings
         # https://www.quantconnect.com/forum/discussion/13989/proper-way-to-differentiate-between-universes/
@@ -35,10 +44,13 @@ class LSTM_Industries(QCAlgorithm):
         self.add_universe_selection(FundamentalUniverseSelectionModel(self.SelectionFilter))
 
         # Set portfolio construction model
-        # self.set_portfolio_construction()
+        self.set_portfolio_construction(InsightWeightingPortfolioConstructionModel())
 
-        # Set benchmark
-        self.set_benchmark("SPY")
+        # Set risk management model
+        self.set_risk_management(TrailingStopRiskManagementModel(0.05))
+
+        # Set execution model
+        self.set_execution(ImmediateExecutionModel())
 
         # self.Schedule.On(self.DateRules.EveryDay(),
         #                  self.TimeRules.Every(TimeSpan.FromHours(1)),
@@ -123,3 +135,8 @@ class LSTM_Industries(QCAlgorithm):
 
             change = changes[symbol]
             self.log(f"Symbol changed: {change.symbol} {change}")
+
+
+
+
+
